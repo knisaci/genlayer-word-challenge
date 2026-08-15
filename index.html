@@ -257,11 +257,11 @@ async function genCall(data) {
 
 async function decodeResult(result) {
   if (!result) return null;
-  // result.data is hex-encoded msgpack
-  const hex = result.data || result;
+  const hex = (result && result.data) ? result.data : result;
   if (!hex || hex === '0x') return null;
   const bytes = new Uint8Array(hex.replace('0x','').match(/.{1,2}/g).map(b=>parseInt(b,16)));
-  return msgpackDecode(bytes);
+  // First byte is a length/type prefix — skip it, decode from byte 1
+  return msgpackDecode(bytes.slice(1));
 }
 
 // ── INIT (load word before wallet connect)
