@@ -259,9 +259,20 @@ async function decodeResult(result) {
   if (!result) return null;
   const hex = (result && result.data) ? result.data : result;
   if (!hex || hex === '0x') return null;
-  const bytes = new Uint8Array(hex.replace('0x','').match(/.{1,2}/g).map(b=>parseInt(b,16)));
-  // First byte is a length/type prefix — skip it, decode from byte 1
-  return msgpackDecode(bytes.slice(1));
+  const clean = hex.replace('0x','');
+  const bytes = new Uint8Array(clean.match(/.{1,2}/g).map(b=>parseInt(b,16)));
+  // Try msgpack first, fall back to raw UTF-8 skip-1
+  try {
+    const val = msgpackDecode(bytes);
+    if (typeof val === 'string' && val.length > 0) return val;
+    if (typeof val === 'number') {
+      // First byte was numeric — try skipping it and decoding rest as UTF-8
+      return new TextDecoder().decode(bytes.slice(1));
+    }
+    return val;
+  } catch(e) {
+    return new TextDecoder().decode(bytes.slice(1));
+  }
 }
 
 // ── INIT (load word before wallet connect)
