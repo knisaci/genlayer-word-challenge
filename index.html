@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Word Challenge — GenLayer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#0a0c0f;--bg2:#111418;--bg3:#181d23;
+      --border:#1f2730;--border-bright:#2a3540;
+      --green:#00e57a;--green-dim:#00c46a;
+      --green-glow:rgba(0,229,122,0.12);--green-glow-strong:rgba(0,229,122,0.25);
+      --text:#e8edf2;--text-dim:#6b7a8d;--text-mid:#9aaab8;
+      --red:#ff4d6a;--amber:#f59e0b;
+      --mono:'JetBrains Mono',monospace;--sans:'Outfit',sans-serif;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;}
+    body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.3;pointer-events:none;z-index:0;}
+    body::after{content:'';position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,var(--green-glow) 0%,transparent 70%);pointer-events:none;z-index:0;}
+    header{position:relative;z-index:10;border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:60px;background:rgba(10,12,15,.8);backdrop-filter:blur(12px);}
+    .logo{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--green);letter-spacing:.05em;text-transform:uppercase;}
+    .logo span{color:var(--text-dim);font-weight:400;}
+    .network-badge{font-family:var(--mono);font-size:11px;color:var(--text-dim);background:var(--bg3);border:1px solid var(--border);padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:6px;}
+    .network-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    main{position:relative;z-index:10;flex:1;max-width:760px;width:100%;margin:0 auto;padding:48px 24px 80px;}
+    #connect-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:24px;}
+    .hero-word{font-family:var(--mono);font-size:clamp(48px,10vw,80px);font-weight:700;color:var(--green);letter-spacing:-.02em;text-shadow:0 0 60px var(--green-glow-strong);animation:flicker 6s infinite;}
+    @keyframes flicker{0%,95%,100%{opacity:1}96%{opacity:.85}97%{opacity:1}98%{opacity:.9}}
+    .hero-sub{font-size:16px;color:var(--text-dim);max-width:380px;line-height:1.6;}
+    .btn{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border:none;cursor:pointer;border-radius:var(--radius);transition:all .15s ease;display:inline-flex;align-items:center;gap:8px;}
+    .btn-primary{background:var(--green);color:#000;padding:14px 28px;}
+    .btn-primary:hover{background:var(--green-dim);transform:translateY(-1px);box-shadow:0 8px 24px var(--green-glow-strong);}
+    .btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+    #game-screen{display:none;}
+    .wallet-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);}
+    .wallet-info{display:flex;align-items:center;gap:10px;}
+    .wallet-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
+    .wallet-addr{font-family:var(--mono);font-size:12px;color:var(--text-mid);}
+    .wallet-score{font-family:var(--mono);font-size:12px;color:var(--green);}
+    .tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:4px;}
+    .tab{flex:1;padding:8px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;border-radius:7px;transition:all .15s;border:none;background:none;}
+    .tab.active{background:var(--bg3);color:var(--green);border:1px solid var(--border-bright);}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+    .word-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:32px;margin-bottom:24px;position:relative;overflow:hidden;}
+    .word-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);}
+    .today-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;}
+    .challenge-word{font-family:var(--mono);font-size:clamp(32px,8vw,56px);font-weight:700;color:var(--green);letter-spacing:-.02em;text-shadow:0 0 40px var(--green-glow);line-height:1;}
+    .word-hint{margin-top:10px;font-size:13px;color:var(--text-dim);}
+    .submit-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:24px;}
+    .section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;}
+    .sentence-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-family:var(--sans);font-size:15px;color:var(--text);resize:none;height:90px;transition:border-color .15s;outline:none;display:block;margin-bottom:16px;}
+    .sentence-input:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-glow);}
+    .sentence-input::placeholder{color:var(--text-dim);}
+    .submit-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .char-count{font-family:var(--mono);font-size:11px;color:var(--text-dim);}
+    .status-bar{display:none;align-items:center;gap:10px;padding:14px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:24px;font-family:var(--mono);font-size:12px;color:var(--text-mid);}
+    .status-bar.active{display:flex;}
+    .spinner{width:14px;height:14px;border:2px solid var(--border-bright);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .result-card{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:24px;}
+    .result-card.show{display:block;}
+    .result-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .result-verdict{display:flex;align-items:center;gap:12px;}
+    .verdict-icon{font-size:22px;line-height:1;}
+    .verdict-label{font-family:var(--mono);font-size:13px;font-weight:700;}
+    .verdict-label.correct{color:var(--green);}
+    .verdict-label.incorrect{color:var(--red);}
+    .points-badge{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--green);background:var(--green-glow);border:1px solid rgba(0,229,122,.2);padding:4px 14px;border-radius:20px;}
+    .result-body{padding:16px 24px;}
+    .result-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+    .result-row:last-child{border-bottom:none;}
+    .result-key{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;}
+    .creativity-badge{font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;}
+    .creativity-badge.low{background:rgba(107,122,141,.15);color:var(--text-dim);border:1px solid var(--border);}
+    .creativity-badge.good{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.2);}
+    .creativity-badge.creative{background:var(--green-glow);color:var(--green);border:1px solid rgba(0,229,122,.2);}
+    .feedback-text{margin-top:12px;padding:12px 14px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--text-mid);line-height:1.5;font-style:italic;}
+    .validators-section{padding:16px 24px;border-top:1px solid var(--border);}
+    .validators-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;}
+    .validator-list{display:flex;flex-direction:column;gap:6px;}
+    .validator-item{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--text-mid);padding:6px 10px;background:var(--bg3);border-radius:6px;}
+    .validator-item::before{content:'✓';color:var(--green);font-size:10px;}
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px;}
+    .stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;text-align:center;}
+    .stat-num{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--green);line-height:1;}
+    .stat-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px;}
+    .history-list{display:flex;flex-direction:column;gap:10px;}
+    .history-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+    .history-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+    .history-word{font-family:var(--mono);font-size:12px;color:var(--green);font-weight:700;}
+    .history-pts{font-family:var(--mono);font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+    .history-sentence{font-size:13px;color:var(--text-mid);line-height:1.5;}
+    .lb-table{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+    .lb-row{display:grid;grid-template-columns:40px 1fr 80px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center;font-family:var(--mono);font-size:12px;}
+    .lb-row:last-child{border-bottom:none;}
+    .lb-row.header{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;background:var(--bg3);}
+    .lb-rank{color:var(--text-dim);}
+    .lb-rank.top{color:var(--green);font-weight:700;}
+    .lb-addr{color:var(--text-mid);}
+    .lb-addr.me{color:var(--green);}
+    .lb-score{color:var(--text);text-align:right;}
+    .empty{text-align:center;padding:40px 20px;color:var(--text-dim);font-family:var(--mono);font-size:12px;}
+    .error-msg{display:none;padding:12px 16px;background:rgba(255,77,106,.08);border:1px solid rgba(255,77,106,.2);border-radius:8px;font-family:var(--mono);font-size:12px;color:var(--red);margin-bottom:16px;}
+    .error-msg.show{display:block;}
+    footer{position:relative;z-index:10;border-top:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;}
+    .footer-text{font-family:var(--mono);font-size:11px;color:var(--text-dim);}
+    .contract-link{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-decoration:none;transition:color .15s;}
+    .contract-link:hover{color:var(--green);}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">Word<span>Challenge</span></div>
+  <div class="network-badge">Testnet Bradbury</div>
+</header>
+<main>
+  <div id="connect-screen">
+    <div class="hero-word" id="hero-word">···</div>
+    <p class="hero-sub">Use today's word in a sentence. Five AI validators judge your answer on-chain.</p>
+    <button class="btn btn-primary" id="connect-btn" onclick="connectWallet()">Connect Wallet</button>
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">MetaMask, Rabby, or any injected wallet</p>
+  </div>
+  <div id="game-screen">
+    <div class="wallet-bar">
+      <div class="wallet-info"><div class="wallet-dot"></div><span class="wallet-addr" id="wallet-addr">—</span></div>
+      <span class="wallet-score" id="wallet-score-bar">0 pts</span>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('play')">Play</button>
+      <button class="tab" onclick="switchTab('history')">History</button>
+      <button class="tab" onclick="switchTab('leaderboard')">Leaderboard</button>
+    </div>
+    <div class="tab-content active" id="tab-play">
+      <div class="word-card">
+        <div class="today-label">Today's Word</div>
+        <div class="challenge-word" id="challenge-word">Loading…</div>
+        <div class="word-hint">Write one sentence using this word correctly.</div>
+      </div>
+      <div class="submit-card">
+        <div class="section-label">Your Sentence</div>
+        <textarea class="sentence-input" id="sentence-input" placeholder="The validators reached consensus on something unexpected…" maxlength="280" oninput="updateCharCount()"></textarea>
+        <div class="submit-row">
+          <span class="char-count" id="char-count">0 / 280</span>
+          <button class="btn btn-primary" id="submit-btn" onclick="submitSentence()">Submit →</button>
+        </div>
+      </div>
+      <div class="status-bar" id="status-bar"><div class="spinner"></div><span id="status-text">Waiting…</span></div>
+      <div class="error-msg" id="error-msg"></div>
+      <div class="result-card" id="result-card">
+        <div class="result-header">
+          <div class="result-verdict">
+            <span class="verdict-icon" id="verdict-icon">—</span>
+            <span class="verdict-label" id="verdict-label">—</span>
+          </div>
+          <div class="points-badge" id="points-badge">+0 pts</div>
+        </div>
+        <div class="result-body">
+          <div class="result-row"><span class="result-key">Correct Usage</span><span id="res-correct">—</span></div>
+          <div class="result-row"><span class="result-key">Creativity</span><span class="creativity-badge" id="res-creativity">—</span></div>
+          <div class="feedback-text" id="res-feedback">—</div>
+        </div>
+        <div class="validators-section">
+          <div class="validators-label">Validators — 5/5 AGREE</div>
+          <div class="validator-list" id="validator-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-history">
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-num" id="stat-score">0</div><div class="stat-label">Total Score</div></div>
+        <div class="stat-box"><div class="stat-num" id="stat-streak">0</div><div class="stat-label">Streak</div></div>
+        <div class="stat-box"><div class="stat-num" id="stat-games">0</div><div class="stat-label">Played</div></div>
+      </div>
+      <div class="section-label">Recent Submissions</div>
+      <div class="history-list" id="history-list"><div class="empty">No submissions yet.</div></div>
+    </div>
+    <div class="tab-content" id="tab-leaderboard">
+      <div class="section-label">Top Players</div>
+      <div class="lb-table">
+        <div class="lb-row header"><span>#</span><span>Wallet</span><span style="text-align:right">Score</span></div>
+        <div id="lb-body"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</main>
+<footer>
+  <span class="footer-text">Built on GenLayer · knisaci</span>
+  <a class="contract-link" href="https://explorer-bradbury.genlayer.com/address/0x1C662CD288A3ab1e745898B14d71105f8baF02a5" target="_blank">0x1C66…02a5 ↗</a>
+</footer>
+<script>
+const CONTRACT = '0x1C662CD288A3ab1e745898B14d71105f8baF02a5';
+const RPC = 'https://rpc-bradbury.genlayer.com';
+const CHAIN_ID = '0x107D';
+let walletAddress = null;
+
+// ── CALLDATA ENCODING
+// These exact bytes were captured by intercepting the GenLayer CLI's HTTP requests
+function calldataWord() {
+  return '0xd9970e066d6574686f64746765745f746f6461795f776f726400';
+}
+function calldataLeaderboard() {
+  return '0xda980e066d6574686f647c6765745f6c6561646572626f61726400';
+}
+function calldataPlayerStats(address) {
+  // Pattern: 0xf838b61604617267730d0d18{20_bytes_address}066d6574686f6484016765745f706c617965725f737461747300
+  const addrHex = address.toLowerCase().replace('0x','');
+  return '0xf838b61604617267730d0d18' + addrHex + '066d6574686f6484016765745f706c617965725f737461747300';
+}
+function calldataSubmit(sentence) {
+  // Method: submit_sentence, args: [sentence]
+  // Pattern from CLI: method bytes + msgpack-encoded sentence string
+  const enc = new TextEncoder();
+  const sentBytes = enc.encode(sentence);
+  const len = sentBytes.length;
+  // msgpack str encoding
+  let strHeader;
+  if (len <= 31) strHeader = [0xa0 | len];
+  else if (len <= 0xff) strHeader = [0xd9, len];
+  else strHeader = [0xda, (len>>8)&0xff, len&0xff];
+  // Full calldata prefix for submit_sentence (from CLI intercept pattern)
+  const prefix = '1604617267730d0d';
+  const methodSuffix = '066d6574686f647c7375626d69745f73656e74656e636500';
+  const strHex = [...strHeader, ...sentBytes].map(b=>b.toString(16).padStart(2,'0')).join('');
+  const lenByte = len.toString(16).padStart(2,'0');
+  return '0x' + prefix + lenByte + strHex + methodSuffix;
+}
+
+// ── RPC
+async function genCall(data) {
+  const res = await fetch(RPC, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'gen_call',
+      params: [{
+        type: 'read',
+        to: CONTRACT,
+        from: walletAddress || '0x0000000000000000000000000000000000000000',
+        data,
+        transaction_hash_variant: 'latest-nonfinal'
+      }],
+      id: Date.now()
+    })
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message);
+  return json.result;
+}
+
+async function decodeResult(result) {
+  if (!result) return null;
+  // result.data is hex-encoded msgpack
+  const hex = result.data || result;
+  if (!hex || hex === '0x') return null;
+  const bytes = new Uint8Array(hex.replace('0x','').match(/.{1,2}/g).map(b=>parseInt(b,16)));
+  return msgpackDecode(bytes);
+}
+
+// ── INIT (load word before wallet connect)
+async function init() {
+  try {
+    const result = await genCall(calldataWord());
+    const word = await decodeResult(result);
+    if (word) {
+      document.getElementById('hero-word').textContent = String(word).toUpperCase();
+    }
+  } catch(e) {
+    console.warn('init word load:', e);
+    document.getElementById('hero-word').textContent = 'WORD';
+  }
+}
+
+// ── WALLET
+async function connectWallet() {
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = true; btn.textContent = 'Connecting…';
+  try {
+    if (!window.ethereum) { alert('No wallet found. Install MetaMask or Rabby.'); btn.disabled=false; btn.textContent='Connect Wallet'; return; }
+    const accounts = await window.ethereum.request({method:'eth_requestAccounts'});
+    walletAddress = accounts[0];
+    // Switch to Bradbury
+    try {
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CHAIN_ID}]});
+    } catch(e) {
+      if (e.code===4902) await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:CHAIN_ID,chainName:'GenLayer Bradbury Testnet',rpcUrls:[RPC],nativeCurrency:{name:'GEN',symbol:'GEN',decimals:18}}]});
+    }
+    document.getElementById('connect-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('wallet-addr').textContent = walletAddress.slice(0,6)+'…'+walletAddress.slice(-4);
+    await loadWord();
+    await loadPlayerStats();
+    await loadLeaderboard();
+  } catch(e) {
+    console.error(e);
+    showError(e.message||'Connection failed.');
+    btn.disabled=false; btn.textContent='Connect Wallet';
+  }
+}
+
+async function loadWord() {
+  try {
+    const result = await genCall(calldataWord());
+    const word = await decodeResult(result);
+    if (word) document.getElementById('challenge-word').textContent = String(word).toUpperCase();
+  } catch(e) { console.warn('loadWord:', e); }
+}
+
+// ── SUBMIT
+async function submitSentence() {
+  const sentence = document.getElementById('sentence-input').value.trim();
+  if (!sentence) return;
+  setStatus(true,'Sending transaction…');
+  hideResult(); hideError();
+  document.getElementById('submit-btn').disabled = true;
+  try {
+    const txHash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        from: walletAddress,
+        to: CONTRACT,
+        data: calldataSubmit(sentence),
+        gas: '0x' + (600000).toString(16)
+      }]
+    });
+    setStatus(true,'Waiting for 5 validators… (~30–60s)');
+    const receipt = await pollReceipt(txHash);
+    if (receipt) {
+      setStatus(true,'Consensus reached! Loading result…');
+      await sleep(2000);
+      await loadResultFromStats(receipt);
+      await loadPlayerStats();
+      await loadLeaderboard();
+    } else {
+      showError('Timed out. Check explorer-bradbury.genlayer.com for tx status.');
+    }
+  } catch(e) {
+    console.error(e);
+    showError(e.message||'Transaction failed.');
+  }
+  setStatus(false);
+  document.getElementById('submit-btn').disabled = false;
+}
+
+async function pollReceipt(hash, tries=90, ms=5000) {
+  const names = {1:'PENDING',2:'ACTIVATED',3:'PROPOSING',4:'COMMITTING',5:'REVEALING',6:'ACCEPTED',7:'FINALIZED'};
+  for (let i=0;i<tries;i++) {
+    try {
+      const res = await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'gen_getTransactionReceipt',params:[{txId:hash}],id:1})});
+      const data = await res.json();
+      const r = data.result;
+      if (r&&(r.status===6||r.status===7)) return r;
+      if (r) document.getElementById('status-text').textContent=`Validators working… (${names[r.status]||r.status})`;
+    } catch(e){}
+    await sleep(ms);
+  }
+  return null;
+}
+
+async function loadResultFromStats(receipt) {
+  try {
+    const result = await genCall(calldataPlayerStats(walletAddress));
+    const raw = await decodeResult(result);
+    if (!raw) return;
+    const stats = JSON.parse(String(raw));
+    const latest = (stats.history||[])[0];
+    if (!latest) return;
+    showResult({
+      correct: latest.correct,
+      creativity: latest.creativity,
+      feedback: latest.feedback,
+      points: latest.points,
+      validators: receipt.consumedValidators||[]
+    });
+  } catch(e) { console.error('loadResultFromStats:', e); }
+}
+
+function showResult({correct,creativity,feedback,points,validators}) {
+  document.getElementById('verdict-icon').textContent = correct?'✅':'❌';
+  document.getElementById('verdict-label').textContent = correct?'Correct Usage':'Incorrect Usage';
+  document.getElementById('verdict-label').className = 'verdict-label '+(correct?'correct':'incorrect');
+  document.getElementById('points-badge').textContent = `+${points} pts`;
+  document.getElementById('res-correct').textContent = correct?'Yes':'No';
+  const cb = document.getElementById('res-creativity');
+  cb.textContent = creativity; cb.className = 'creativity-badge '+(creativity||'low');
+  document.getElementById('res-feedback').textContent = feedback||'—';
+  const vList = document.getElementById('validator-list');
+  vList.innerHTML = (validators||[]).map(v=>`<div class="validator-item">${v.slice(0,10)}…${v.slice(-8)}</div>`).join('');
+  document.getElementById('result-card').classList.add('show');
+  document.getElementById('sentence-input').value='';
+  updateCharCount();
+}
+
+function hideResult() { document.getElementById('result-card').classList.remove('show'); }
+
+async function loadPlayerStats() {
+  try {
+    const result = await genCall(calldataPlayerStats(walletAddress));
+    const raw = await decodeResult(result);
+    if (!raw) return;
+    const stats = JSON.parse(String(raw));
+    document.getElementById('wallet-score-bar').textContent = `${stats.score||0} pts`;
+    document.getElementById('stat-score').textContent = stats.score||0;
+    document.getElementById('stat-streak').textContent = stats.streak||0;
+    document.getElementById('stat-games').textContent = (stats.history||[]).length;
+    const history = stats.history||[];
+    const hList = document.getElementById('history-list');
+    if (!history.length) { hList.innerHTML='<div class="empty">No submissions yet.</div>'; return; }
+    hList.innerHTML = history.map(h=>`
+      <div class="history-item">
+        <div class="history-top">
+          <span class="history-word">${(h.word||'').toUpperCase()}</span>
+          <span class="history-pts">+${h.points} pts <span class="creativity-badge ${h.creativity||'low'}">${h.creativity||'—'}</span></span>
+        </div>
+        <div class="history-sentence">${h.sentence}</div>
+      </div>`).join('');
+  } catch(e) { console.error('loadPlayerStats:', e); }
+}
+
+async function loadLeaderboard() {
+  try {
+    const result = await genCall(calldataLeaderboard());
+    const raw = await decodeResult(result);
+    if (!raw) return;
+    const entries = JSON.parse(String(raw));
+    const lbBody = document.getElementById('lb-body');
+    if (!entries||!entries.length) { lbBody.innerHTML='<div class="empty">No players yet.</div>'; return; }
+    lbBody.innerHTML = entries.map((e,i)=>{
+      const isMe = walletAddress&&e.address.toLowerCase()===walletAddress.toLowerCase();
+      const rank = i+1;
+      const medal = rank<=3?['🥇','🥈','🥉'][rank-1]:rank;
+      const short = e.address.slice(0,8)+'…'+e.address.slice(-6);
+      return `<div class="lb-row"><span class="lb-rank ${rank<=3?'top':''}">${medal}</span><span class="lb-addr ${isMe?'me':''}">${short}${isMe?' ← you':''}</span><span class="lb-score">${e.score}</span></div>`;
+    }).join('');
+  } catch(e) { console.error('loadLeaderboard:', e); }
+}
+
+function switchTab(name) {
+  const names=['play','history','leaderboard'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name==='leaderboard') loadLeaderboard();
+  if (name==='history') loadPlayerStats();
+}
+
+function setStatus(active,text){document.getElementById('status-bar').classList.toggle('active',active);if(text)document.getElementById('status-text').textContent=text;}
+function showError(msg){const e=document.getElementById('error-msg');e.textContent=msg;e.classList.add('show');}
+function hideError(){document.getElementById('error-msg').classList.remove('show');}
+function updateCharCount(){document.getElementById('char-count').textContent=document.getElementById('sentence-input').value.length+' / 280';}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── MSGPACK DECODER
+function msgpackDecode(bytes){return _mpd(bytes,{pos:0}).val;}
+function _mpd(b,s){
+  const x=b[s.pos++];
+  if(x<=0x7f)return{val:x};
+  if((x&0xe0)===0xa0){const n=x&0x1f;const v=new TextDecoder().decode(b.slice(s.pos,s.pos+n));s.pos+=n;return{val:v};}
+  if((x&0xf0)===0x90){const n=x&0x0f;const a=[];for(let i=0;i<n;i++)a.push(_mpd(b,s).val);return{val:a};}
+  if((x&0xf0)===0x80){const n=x&0x0f;const o={};for(let i=0;i<n;i++){const k=_mpd(b,s).val;o[k]=_mpd(b,s).val;}return{val:o};}
+  if(x===0xc0)return{val:null};
+  if(x===0xc2)return{val:false};
+  if(x===0xc3)return{val:true};
+  if(x===0xd9){const n=b[s.pos++];const v=new TextDecoder().decode(b.slice(s.pos,s.pos+n));s.pos+=n;return{val:v};}
+  if(x===0xda){const n=(b[s.pos]<<8)|b[s.pos+1];s.pos+=2;const v=new TextDecoder().decode(b.slice(s.pos,s.pos+n));s.pos+=n;return{val:v};}
+  if(x===0xdb){const n=(b[s.pos]<<24)|(b[s.pos+1]<<16)|(b[s.pos+2]<<8)|b[s.pos+3];s.pos+=4;const v=new TextDecoder().decode(b.slice(s.pos,s.pos+n));s.pos+=n;return{val:v};}
+  if(x===0xdc){const n=(b[s.pos]<<8)|b[s.pos+1];s.pos+=2;const a=[];for(let i=0;i<n;i++)a.push(_mpd(b,s).val);return{val:a};}
+  if(x===0xde){const n=(b[s.pos]<<8)|b[s.pos+1];s.pos+=2;const o={};for(let i=0;i<n;i++){const k=_mpd(b,s).val;o[k]=_mpd(b,s).val;}return{val:o};}
+  if(x===0xcb){const v=new DataView(b.buffer,b.byteOffset+s.pos,8).getFloat64(0);s.pos+=8;return{val:v};}
+  if(x===0xcc)return{val:b[s.pos++]};
+  if(x===0xcd){const v=(b[s.pos]<<8)|b[s.pos+1];s.pos+=2;return{val:v};}
+  if(x===0xce){const v=(b[s.pos]<<24)|(b[s.pos+1]<<16)|(b[s.pos+2]<<8)|b[s.pos+3];s.pos+=4;return{val:v>>>0};}
+  if(x===0xe0)return{val:x-0x100};
+  if(x>=0xe0)return{val:x-0x100};
+  return{val:x};
+}
+
+init();
+</script>
+</body>
+</html>

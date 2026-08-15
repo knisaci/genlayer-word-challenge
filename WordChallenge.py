@@ -15,9 +15,8 @@ class WordChallenge(gl.Contract):
         return self.today_word
 
     @gl.public.view
-    def get_player_stats(self, player: str) -> str:
-        addr = Address(player)
-        return self.player_stats.get(addr, '{"score":0,"streak":0,"history":[]}')
+    def get_player_stats(self, player: Address) -> str:
+        return self.player_stats.get(player, '{"score":0,"streak":0,"history":[]}')
 
     @gl.public.view
     def get_leaderboard(self) -> str:
