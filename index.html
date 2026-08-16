@@ -214,16 +214,16 @@ function calldataPlayerStats(address) {
   return '0xf838b61604617267730d0d18' + addrHex + '066d6574686f6484016765745f706c617965725f737461747300';
 }
 function calldataSubmit(sentence) {
-  // GenLayer calldata for submit_sentence
-  // Pattern captured from CLI intercept:
-  // efad + 1604617267730d0d + {len_byte}{sentence_bytes} + 066d6574686f647c7375626d69745f73656e74656e636500
+  // Encoding reverse-engineered from CLI intercept:
+  // efad + 1604617267730d0d + {prefix_byte}{raw_string} + 066d6574686f647c + {method} + 00
+  // prefix_byte = (string_length * 8) + 4
   const enc = new TextEncoder();
-  const sentBytes = enc.encode(sentence);
+  const sentBytes = Array.from(enc.encode(sentence));
   const len = sentBytes.length;
-  const lenHex = len.toString(16).padStart(2,'0');
-  const sentHex = Array.from(sentBytes).map(b=>b.toString(16).padStart(2,'0')).join('');
-  const innerCalldata = 'efad1604617267730d0d' + lenHex + sentHex + '066d6574686f647c7375626d69745f73656e74656e636500';
-  return innerCalldata;
+  const prefixByte = ((len * 8) + 4).toString(16).padStart(2,'0');
+  const sentHex = sentBytes.map(b=>b.toString(16).padStart(2,'0')).join('');
+  const method = '7375626d69745f73656e74656e6365';
+  return 'efad1604617267730d0d' + prefixByte + sentHex + '066d6574686f647c' + method + '00';
 }
 
 function padLeft(hex, bytes) {
