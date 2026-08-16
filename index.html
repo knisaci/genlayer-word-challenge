@@ -381,11 +381,43 @@ async function submitSentence() {
   document.getElementById('submit-btn').disabled = false;
 }
 
-async function pollReceipt(hash, tries=90, ms=5000) {
+async function getGenLayerTxId(evmTxHash) {
+  // Fetch EVM receipt and extract GenLayer tx ID from NewTransaction event logs
+  // Topic[0] of NewTransaction = 0xdab91028...
+  // Topic[1] = the GenLayer tx ID
+  const NEW_TX_TOPIC = '0xdab9102861c7483a187584d6371d88316f005af507982ccf95c110879f3ed5a5';
+  for (let i = 0; i < 20; i++) {
+    try {
+      const res = await fetch(RPC, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({jsonrpc:'2.0', method:'eth_getTransactionReceipt', params:[evmTxHash], id:1})
+      });
+      const data = await res.json();
+      const receipt = data.result;
+      if (receipt && receipt.logs) {
+        for (const log of receipt.logs) {
+          if (log.topics && log.topics[0] === NEW_TX_TOPIC && log.topics[1]) {
+            return log.topics[1]; // This is the GenLayer tx ID
+          }
+        }
+      }
+    } catch(e) {}
+    await sleep(2000);
+  }
+  return null;
+}
+
+async function pollReceipt(evmTxHash, tries=90, ms=5000) {
+  // First get the GenLayer tx ID from the EVM receipt
+  setStatus(true, 'Getting transaction ID…');
+  const glTxId = await getGenLayerTxId(evmTxHash);
+  if (!glTxId) { showError('Could not get GenLayer tx ID.'); return null; }
+
   const names = {1:'PENDING',2:'ACTIVATED',3:'PROPOSING',4:'COMMITTING',5:'REVEALING',6:'ACCEPTED',7:'FINALIZED'};
+  setStatus(true, 'Waiting for validators…');
   for (let i=0;i<tries;i++) {
     try {
-      const res = await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'gen_getTransactionReceipt',params:[{txId:hash}],id:1})});
+      const res = await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'gen_getTransactionReceipt',params:[{txId:glTxId}],id:1})});
       const data = await res.json();
       const r = data.result;
       if (r&&(r.status===6||r.status===7)) return r;
