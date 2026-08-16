@@ -214,22 +214,40 @@ function calldataPlayerStats(address) {
   return '0xf838b61604617267730d0d18' + addrHex + '066d6574686f6484016765745f706c617965725f737461747300';
 }
 function calldataSubmit(sentence) {
-  // Method: submit_sentence, args: [sentence]
-  // Pattern from CLI: method bytes + msgpack-encoded sentence string
+  // GenLayer calldata for submit_sentence
+  // Pattern captured from CLI intercept:
+  // efad + 1604617267730d0d + {len_byte}{sentence_bytes} + 066d6574686f647c7375626d69745f73656e74656e636500
   const enc = new TextEncoder();
   const sentBytes = enc.encode(sentence);
   const len = sentBytes.length;
-  // msgpack str encoding
-  let strHeader;
-  if (len <= 31) strHeader = [0xa0 | len];
-  else if (len <= 0xff) strHeader = [0xd9, len];
-  else strHeader = [0xda, (len>>8)&0xff, len&0xff];
-  // Full calldata prefix for submit_sentence (from CLI intercept pattern)
-  const prefix = '1604617267730d0d';
-  const methodSuffix = '066d6574686f647c7375626d69745f73656e74656e636500';
-  const strHex = [...strHeader, ...sentBytes].map(b=>b.toString(16).padStart(2,'0')).join('');
-  const lenByte = len.toString(16).padStart(2,'0');
-  return '0x' + prefix + lenByte + strHex + methodSuffix;
+  const lenHex = len.toString(16).padStart(2,'0');
+  const sentHex = Array.from(sentBytes).map(b=>b.toString(16).padStart(2,'0')).join('');
+  const innerCalldata = 'efad1604617267730d0d' + lenHex + sentHex + '066d6574686f647c7375626d69745f73656e74656e636500';
+  return innerCalldata;
+}
+
+function padLeft(hex, bytes) {
+  return hex.replace('0x','').padStart(bytes*2,'0');
+}
+
+function abiEncodeSubmit(sender, contractAddr, txData) {
+  // ABI encode addTransaction(address sender, address recipient, uint256 validators, uint256 rotations, bytes txData, bool leaderOnly)
+  // function selector: e71d5196
+  const sel = 'e71d5196';
+  const senderPad = padLeft(sender, 32);
+  const contractPad = padLeft(contractAddr, 32);
+  const validators = padLeft('5', 32);
+  const rotations = padLeft('3', 32);
+  const leaderOnly = padLeft('0', 32);
+  // bytes offset: 6 params * 32 bytes = 192 = 0xc0
+  const bytesOffset = padLeft('c0', 32);
+  // txData as bytes: length + data padded to 32-byte boundary
+  const txBytes = txData.replace('0x','').match(/.{1,2}/g) || [];
+  const txLen = padLeft(txBytes.length.toString(16), 32);
+  const txHex = txBytes.join('');
+  const paddedLen = Math.ceil(txBytes.length / 32) * 32;
+  const txPadded = txHex.padEnd(paddedLen * 2, '0');
+  return '0x' + sel + senderPad + contractPad + validators + rotations + bytesOffset + leaderOnly + txLen + txPadded;
 }
 
 // ── RPC
@@ -332,13 +350,16 @@ async function submitSentence() {
   hideResult(); hideError();
   document.getElementById('submit-btn').disabled = true;
   try {
+    const CONSENSUS_CONTRACT = '0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D';
+    const txData = calldataSubmit(sentence);
+    const data = abiEncodeSubmit(walletAddress, CONTRACT, txData);
     const txHash = await window.ethereum.request({
       method: 'eth_sendTransaction',
       params: [{
         from: walletAddress,
-        to: CONTRACT,
-        data: calldataSubmit(sentence),
-        gas: '0x' + (600000).toString(16)
+        to: CONSENSUS_CONTRACT,
+        data: data,
+        value: '0x0'
       }]
     });
     setStatus(true,'Waiting for 5 validators… (~30–60s)');
