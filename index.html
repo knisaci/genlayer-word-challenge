@@ -422,7 +422,7 @@ async function pollReceipt(evmTxHash, tries=90, ms=5000) {
       const res = await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'gen_getTransactionReceipt',params:[{txId:glTxId}],id:1})});
       const data = await res.json();
       const r = data.result;
-      if (r&&(r.status===6||r.status===7)) return r;
+      if (r&&(r.status===5||r.status===6||r.status===7)) return r;
       if (r) document.getElementById('status-text').textContent=`Validators working… (${names[r.status]||r.status})`;
     } catch(e){}
     await sleep(ms);
