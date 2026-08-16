@@ -231,21 +231,20 @@ function padLeft(hex, bytes) {
 }
 
 function abiEncodeSubmit(sender, contractAddr, txData) {
-  // ABI encode addTransaction(address sender, address recipient, uint256 validators, uint256 rotations, bytes txData, bool leaderOnly)
-  // function selector: e71d5196
+  // ABI encode addTransaction matching exact CLI parameter order:
+  // selector + sender + recipient + numValidators + maxRotations + bytesOffset + leaderOnly + bytesLength + bytesData
   const sel = 'e71d5196';
-  const senderPad = padLeft(sender, 32);
-  const contractPad = padLeft(contractAddr, 32);
-  const validators = padLeft('5', 32);
-  const rotations = padLeft('3', 32);
-  const leaderOnly = padLeft('0', 32);
-  // bytes offset: 6 params * 32 bytes = 192 = 0xc0
-  const bytesOffset = padLeft('c0', 32);
-  // txData as bytes: length + data padded to 32-byte boundary
+  const senderPad = sender.toLowerCase().replace('0x','').padStart(64,'0');
+  const contractPad = contractAddr.toLowerCase().replace('0x','').padStart(64,'0');
+  const validators = '0000000000000000000000000000000000000000000000000000000000000005';
+  const rotations = '0000000000000000000000000000000000000000000000000000000000000003';
+  const bytesOffset = '00000000000000000000000000000000000000000000000000000000000000c0';
+  const leaderOnly = '0000000000000000000000000000000000000000000000000000000000000000';
+  // txData bytes
   const txBytes = txData.replace('0x','').match(/.{1,2}/g) || [];
-  const txLen = padLeft(txBytes.length.toString(16), 32);
+  const txLen = txBytes.length.toString(16).padStart(64,'0');
   const txHex = txBytes.join('');
-  const paddedLen = Math.ceil(txBytes.length / 32) * 32;
+  const paddedLen = Math.ceil((txBytes.length + 1) / 32) * 32;
   const txPadded = txHex.padEnd(paddedLen * 2, '0');
   return '0x' + sel + senderPad + contractPad + validators + rotations + bytesOffset + leaderOnly + txLen + txPadded;
 }
